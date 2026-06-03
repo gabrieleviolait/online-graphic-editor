@@ -852,9 +852,12 @@
     immagini e dati vengono elaborati localmente nel browser e non vengono salvati o trasmessi da questo tool.
 </footer>
 
+
 <script>
-    document.querySelectorAll(".current-year").forEach(function(el) {
-        el.textContent = new Date().getFullYear();
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll(".current-year").forEach(function(el) {
+            el.textContent = new Date().getFullYear();
+        });
     });
 </script>
 
