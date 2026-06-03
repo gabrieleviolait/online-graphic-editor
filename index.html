@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Editor Grafico Pro V4</title>
+    <script src="vendor/fabric.min.js"></script>
+    <script src="vendor/FileSaver.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0f1a; overflow: hidden; }
+
+        .top-toolbar {
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+            z-index: 100;
+            position: relative;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            background: #2a2a3e;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+        .btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
+        .btn-danger { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white; }
+        .btn-warning { background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%); color: white; }
+
+        .separator { width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 10px; }
+
+        .main-container { display: flex; height: calc(100vh - 60px); }
+
+        .left-panel {
+            width: 300px;
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .tool-section {
+            margin-bottom: 25px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 20px;
+        }
+
+        .tool-section h3 {
+            font-size: 13px;
+            margin-bottom: 12px;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .resolution-preset {
+            background: #2a2a3e;
+            border: 1px solid #3a3a4e;
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .resolution-preset:hover { border-color: #667eea; background: #3a3a4e; }
+        .resolution-name { font-weight: bold; color: #e0e0e0; }
+        .resolution-size { font-size: 11px; color: #888; }
+
+        /* Color swatch grid */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+        .color-swatch {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .color-swatch:hover { transform: scale(1.15); border-color: white; }
+        .color-swatch.selected { border-color: white; box-shadow: 0 0 0 2px #667eea; }
+
+        /* Gradient swatches */
+        .gradient-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .gradient-swatch {
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .gradient-swatch:hover { transform: scale(1.05); border-color: white; }
+
+        /* Custom color picker row */
+        .custom-color-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .custom-color-row label { font-size: 12px; color: #aaa; flex: 1; }
+        .custom-color-row input[type="color"] {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 6px 0;
+            background: #2a2a3e;
+            height: 4px;
+            border-radius: 5px;
+        }
+        input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            background: #2a2a3e;
+            border: 1px solid #3a3a4e;
+            border-radius: 6px;
+            color: #e0e0e0;
+            margin-top: 5px;
+        }
+
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #1a1a2e;
+            position: relative;
+            overflow: auto;
+            padding: 20px;
+        }
+        #canvas-container { background: #0f0f1a; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border-radius: 12px; display: inline-block; }
+        canvas { border-radius: 8px; display: block; }
+
+        .right-panel {
+            width: 300px;
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .property-group { margin-bottom: 15px; }
+        .property-group label { display: block; font-size: 12px; margin-bottom: 5px; color: #aaa; }
+        .selected-count { background: #667eea; padding: 5px 10px; border-radius: 20px; font-size: 11px; display: inline-block; margin-bottom: 10px; }
+
+        /* Shape color panel */
+        .shape-color-section {
+            display: none;
+        }
+        .shape-color-section.visible {
+            display: block;
+        }
+        .mini-color-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+            margin: 6px 0;
+        }
+        .mini-swatch {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .mini-swatch:hover { transform: scale(1.15); border-color: white; }
+
+        .stroke-preview {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+        }
+        .stroke-box {
+            width: 100%;
+            height: 20px;
+            border-radius: 4px;
+            background: #2a2a3e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #888;
+        }
+
+        .loading { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 1000; color: white; flex-direction: column; }
+        .spinner { width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .shortcut-hint { font-size: 10px; color: #666; margin-top: 5px; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1a1a2e; }
+        ::-webkit-scrollbar-thumb { background: #667eea; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p style="margin-top: 20px;">Elaborazione in corso...</p>
+    </div>
+
+    <div class="top-toolbar">
+        <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">📁 Apri Immagine</button>
+        <input type="file" id="file-input" accept="image/*" style="display: none" onchange="loadImage(this)">
+        <button class="btn btn-primary" onclick="addText()">✏️ Aggiungi Testo</button>
+        <button class="btn btn-primary" onclick="addShape('rect')">◻️ Rettangolo</button>
+        <button class="btn btn-primary" onclick="addShape('circle')">⚪ Cerchio</button>
+        <div class="separator"></div>
+        <button class="btn" onclick="undo()" title="Annulla (Ctrl+Z)">↩️ Annulla</button>
+        <button class="btn" onclick="redo()" title="Ripeti (Ctrl+Y)">↪️ Ripeti</button>
+        <button class="btn btn-danger" onclick="deleteSelected()" title="Cancella selezionati (Canc)">🗑️ Cancella</button>
+        <div class="separator"></div>
+        <button class="btn btn-success" onclick="saveAsPNG()">💾 Salva PNG</button>
+        <button class="btn btn-success" onclick="saveAsJPG()">📸 Salva JPG</button>
+        <button class="btn btn-warning" onclick="exportAsJSON()">📋 Esporta Progetto</button>
+        <button class="btn" onclick="importJSON()">📂 Importa Progetto</button>
+        <input type="file" id="json-input" accept=".json" style="display: none" onchange="importJSONFile(this)">
+    </div>
+
+    <div class="main-container">
+        <!-- Pannello sinistro -->
+        <div class="left-panel">
+            <div class="tool-section">
+                <h3>📐 Risoluzioni & Template</h3>
+                <div id="resolution-presets">
+                    <div class="resolution-preset" onclick="setResolution(1080, 1080)"><span class="resolution-name">📱 Instagram Square</span><span class="resolution-size">1080x1080</span></div>
+                    <div class="resolution-preset" onclick="setResolution(1080, 1920)"><span class="resolution-name">📱 Instagram Story</span><span class="resolution-size">1080x1920</span></div>
+                    <div class="resolution-preset" onclick="setResolution(1920, 1080)"><span class="resolution-name">💻 YouTube Thumbnail</span><span class="resolution-size">1920x1080</span></div>
+                    <div class="resolution-preset" onclick="setResolution(1200, 628)"><span class="resolution-name">📘 Facebook Post</span><span class="resolution-size">1200x628</span></div>
+                    <div class="resolution-preset" onclick="setResolution(800, 2000)"><span class="resolution-name">📌 Pinterest Pin</span><span class="resolution-size">800x2000</span></div>
+                    <div class="resolution-preset" onclick="setResolution(2480, 3508)"><span class="resolution-name">📄 A4 (Print)</span><span class="resolution-size">2480x3508</span></div>
+                    <div class="resolution-preset" onclick="setResolution(1280, 720)"><span class="resolution-name">🎬 YouTube Banner</span><span class="resolution-size">1280x720</span></div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <label style="color: white">Larghezza personalizzata:</label>
+                    <input type="number" id="custom-width" placeholder="Larghezza" style="width: 48%; display: inline-block;">
+                    <input type="number" id="custom-height" placeholder="Altezza" style="width: 48%; display: inline-block; margin-left: 4%;">
+                    <button class="btn" style="width: 100%; margin-top: 8px;" onclick="setCustomResolution()">Applica</button>
+                </div>
+            </div>
+
+            <!-- SFONDI COLORI -->
+            <div class="tool-section">
+                <h3>🎨 Colore Sfondo</h3>
+                <p style="font-size: 11px; color: #888; margin-bottom: 8px;">Colori solidi</p>
+                <div class="color-grid" id="bg-color-grid"></div>
+                <div class="custom-color-row">
+                    <label>Colore personalizzato:</label>
+                    <input type="color" id="bg-custom-color" value="#ffffff" onchange="setBackgroundColor(this.value)">
+                </div>
+                <p style="font-size: 11px; color: #888; margin: 10px 0 6px;">Gradienti</p>
+                <div class="gradient-grid" id="bg-gradient-grid"></div>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-area">
+            <div id="canvas-container"></div>
+        </div>
+
+        <!-- Pannello destro -->
+        <div class="right-panel">
+            <div class="tool-section">
+                <h3>📊 Selezione</h3>
+                <div id="selection-info">
+                    <span class="selected-count" id="selected-count">0 elementi selezionati</span>
+                </div>
+                <button class="btn" style="width: 100%; margin-top: 5px;" onclick="deselectAll()">Deseleziona tutto</button>
+                <button class="btn btn-danger" style="width: 100%; margin-top: 5px;" onclick="deleteSelected()">Elimina selezionati</button>
+                <div class="shortcut-hint">💡 SHIFT = selezione multipla<br>💡 CTRL+Z Annulla | CTRL+Y Ripeti</div>
+            </div>
+
+            <div class="tool-section">
+                <h3>⚙️ Proprietà Oggetto</h3>
+                <div class="property-group">
+                    <label>Posizione X</label>
+                    <input type="range" id="pos-x" min="0" max="2000" step="1" onchange="updateProperty('left', parseInt(this.value))">
+                </div>
+                <div class="property-group">
+                    <label>Posizione Y</label>
+                    <input type="range" id="pos-y" min="0" max="2000" step="1" onchange="updateProperty('top', parseInt(this.value))">
+                </div>
+                <div class="property-group">
+                    <label>Larghezza</label>
+                    <input type="range" id="width" min="10" max="1000" step="1" onchange="updateProperty('width', parseInt(this.value))">
+                </div>
+                <div class="property-group">
+                    <label>Altezza</label>
+                    <input type="range" id="height" min="10" max="1000" step="1" onchange="updateProperty('height', parseInt(this.value))">
+                </div>
+                <div class="property-group">
+                    <label>Rotazione</label>
+                    <input type="range" id="rotation" min="0" max="360" step="1" onchange="updateProperty('angle', parseInt(this.value))">
+                </div>
+                <div class="property-group">
+                    <label>Opacità</label>
+                    <input type="range" id="opacity" min="0" max="1" step="0.01" onchange="updateProperty('opacity', parseFloat(this.value))">
+                </div>
+            </div>
+
+            <!-- COLORI FORMA (visibile solo quando forma selezionata) -->
+            <div class="tool-section shape-color-section" id="shape-color-panel">
+                <h3>🖌️ Colore Forma</h3>
+
+                <p style="font-size: 11px; color: #888; margin-bottom: 6px;">Riempimento</p>
+                <div class="mini-color-grid" id="shape-fill-grid"></div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <label style="font-size: 12px; color: #aaa; flex: 1;">Personalizzato:</label>
+                    <input type="color" id="shape-fill-custom" value="#667eea" style="width: 36px; height: 30px; border: none; border-radius: 6px; cursor: pointer; background: none; padding: 0;" onchange="setShapeFill(this.value)">
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                    <label style="font-size: 12px; color: #aaa; flex: 1;">Trasparente:</label>
+                    <button class="btn" style="padding: 4px 10px; font-size: 11px;" onclick="setShapeFill('transparent')">Nessuno</button>
+                </div>
+
+                <p style="font-size: 11px; color: #888; margin-bottom: 6px;">Colore Bordo</p>
+                <div class="mini-color-grid" id="shape-stroke-grid"></div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <label style="font-size: 12px; color: #aaa; flex: 1;">Personalizzato:</label>
+                    <input type="color" id="shape-stroke-custom" value="#333333" style="width: 36px; height: 30px; border: none; border-radius: 6px; cursor: pointer; background: none; padding: 0;" onchange="setShapeStroke(this.value)">
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                    <label style="font-size: 12px; color: #aaa; flex: 1;">Nessun bordo:</label>
+                    <button class="btn" style="padding: 4px 10px; font-size: 11px;" onclick="setShapeStroke('transparent', 0)">Rimuovi</button>
+                </div>
+
+                <div class="property-group">
+                    <label>Spessore Bordo: <span id="stroke-width-val">2</span>px</label>
+                    <input type="range" id="stroke-width" min="0" max="30" step="1" value="2" oninput="document.getElementById('stroke-width-val').textContent=this.value; setShapeStrokeWidth(parseInt(this.value))">
+                </div>
+            </div>
+
+            <div class="tool-section">
+                <h3>🎨 Filtri (solo immagini)</h3>
+                <button class="btn" style="width: 100%; margin-bottom: 5px;" onclick="applyFilter('grayscale')">⚫ Grayscale</button>
+                <button class="btn" style="width: 100%; margin-bottom: 5px;" onclick="applyFilter('sepia')">🟤 Sepia</button>
+                <button class="btn" style="width: 100%; margin-bottom: 5px;" onclick="applyFilter('brightness')">☀️ Luminosità +20%</button>
+                <button class="btn" style="width: 100%; margin-bottom: 5px;" onclick="applyFilter('contrast')">🎯 Contrasto +20%</button>
+                <button class="btn" style="width: 100%;" onclick="removeFilters()">❌ Rimuovi Filtri</button>
+            </div>
+
+            <div class="tool-section">
+                <h3>📝 Stile Testo</h3>
+                <select id="font-select" onchange="changeFont(this.value)" style="width: 100%; padding: 8px; margin-bottom: 8px; background: #2a2a3e; color: white; border: 1px solid #3a3a4e; border-radius: 6px;">
+                    <option value="Arial">Arial</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="'Courier New'">Courier New</option>
+                    <option value="'Times New Roman'">Times New Roman</option>
+                </select>
+                <button class="btn" style="width: 48%;" onclick="setTextBold()">💰 Grassetto</button>
+                <button class="btn" style="width: 48%; float: right;" onclick="setTextItalic()">📖 Corsivo</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let canvas;
+        let history = [];
+        let historyIndex = -1;
+        let currentWidth = 1080;
+        let currentHeight = 1080;
+
+        // ─── Palette colori estesa ───────────────────────────────────────────────
+        const COLORS = [
+            // Bianchi / Grigi / Neri
+            '#ffffff','#f8f9fa','#e9ecef','#dee2e6','#ced4da','#adb5bd','#6c757d','#495057',
+            '#343a40','#212529','#000000',
+            // Rossi
+            '#fff5f5','#fed7d7','#fc8181','#f56565','#e53e3e','#c53030','#9b2c2c','#742a2a',
+            // Arancioni
+            '#fffaf0','#feebc8','#fbd38d','#f6ad55','#ed8936','#dd6b20','#c05621','#7b341e',
+            // Gialli
+            '#fffff0','#fefcbf','#faf089','#f6e05e','#ecc94b','#d69e2e','#b7791f','#744210',
+            // Verdi
+            '#f0fff4','#c6f6d5','#9ae6b4','#68d391','#48bb78','#38a169','#276749','#1c4532',
+            // Teal
+            '#e6fffa','#b2f5ea','#81e6d9','#4fd1c5','#38b2ac','#2c7a7b','#285e61','#1d4044',
+            // Blu
+            '#ebf8ff','#bee3f8','#90cdf4','#63b3ed','#4299e1','#3182ce','#2b6cb0','#2a4365',
+            // Indaco
+            '#ebf4ff','#c3dafe','#a3bffa','#7f9cf5','#667eea','#5a67d8','#4c51bf','#434190',
+            // Viola
+            '#faf5ff','#e9d8fd','#d6bcfa','#b794f4','#9f7aea','#805ad5','#6b46c1','#553c9a',
+            // Rosa
+            '#fff5f7','#fed7e2','#fbb6ce','#f687b3','#ed64a6','#d53f8c','#b83280','#702459',
+        ];
+
+        const GRADIENTS = [
+            { label: 'Viola', stops: [{ offset: 0, color: '#667eea' }, { offset: 1, color: '#764ba2' }] },
+            { label: 'Fuoco', stops: [{ offset: 0, color: '#f093fb' }, { offset: 1, color: '#f5576c' }] },
+            { label: 'Oceano', stops: [{ offset: 0, color: '#4facfe' }, { offset: 1, color: '#00f2fe' }] },
+            { label: 'Bosco', stops: [{ offset: 0, color: '#43e97b' }, { offset: 1, color: '#38f9d7' }] },
+            { label: 'Tramonto', stops: [{ offset: 0, color: '#fa709a' }, { offset: 1, color: '#fee140' }] },
+            { label: 'Notte', stops: [{ offset: 0, color: '#0f0c29' }, { offset: 1, color: '#302b63' }] },
+            { label: 'Aurora', stops: [{ offset: 0, color: '#a18cd1' }, { offset: 1, color: '#fbc2eb' }] },
+            { label: 'Menta', stops: [{ offset: 0, color: '#84fab0' }, { offset: 1, color: '#8fd3f4' }] },
+            { label: 'Lava', stops: [{ offset: 0, color: '#f12711' }, { offset: 1, color: '#f5af19' }] },
+            { label: 'Nebbia', stops: [{ offset: 0, color: '#e0c3fc' }, { offset: 1, color: '#8ec5fc' }] },
+            { label: 'Grafite', stops: [{ offset: 0, color: '#434343' }, { offset: 1, color: '#000000' }] },
+            { label: 'Oro', stops: [{ offset: 0, color: '#f7971e' }, { offset: 1, color: '#ffd200' }] },
+        ];
+
+        function buildBgColorGrid() {
+            const grid = document.getElementById('bg-color-grid');
+            COLORS.forEach(c => {
+                const el = document.createElement('div');
+                el.className = 'color-swatch';
+                el.style.background = c;
+                el.title = c;
+                el.onclick = () => setBackgroundColor(c);
+                grid.appendChild(el);
+            });
+        }
+
+        function buildBgGradientGrid() {
+            const grid = document.getElementById('bg-gradient-grid');
+            GRADIENTS.forEach(g => {
+                const el = document.createElement('div');
+                el.className = 'gradient-swatch';
+                el.style.background = `linear-gradient(135deg, ${g.stops[0].color}, ${g.stops[1].color})`;
+                el.title = g.label;
+                el.onclick = () => setBackgroundGradientFromStops(g.stops);
+                grid.appendChild(el);
+            });
+        }
+
+        function buildShapeColorGrids() {
+            const fillGrid = document.getElementById('shape-fill-grid');
+            const strokeGrid = document.getElementById('shape-stroke-grid');
+            COLORS.forEach(c => {
+                const f = document.createElement('div');
+                f.className = 'mini-swatch';
+                f.style.background = c;
+                f.title = c;
+                f.onclick = () => { setShapeFill(c); document.getElementById('shape-fill-custom').value = c; };
+                fillGrid.appendChild(f);
+
+                const s = document.createElement('div');
+                s.className = 'mini-swatch';
+                s.style.background = c;
+                s.title = c;
+                s.onclick = () => { setShapeStroke(c); document.getElementById('shape-stroke-custom').value = c; };
+                strokeGrid.appendChild(s);
+            });
+        }
+
+        // ─── Canvas init ─────────────────────────────────────────────────────────
+        function initCanvas() {
+            const container = document.getElementById('canvas-container');
+            container.innerHTML = '';
+            const canvasElement = document.createElement('canvas');
+            canvasElement.id = 'canvas';
+            container.appendChild(canvasElement);
+
+            canvas = new fabric.Canvas('canvas', {
+                width: currentWidth,
+                height: currentHeight,
+                backgroundColor: '#ffffff',
+                selection: true,
+                preserveObjectStacking: true
+            });
+
+            saveState();
+
+            canvas.on('selection:created', onSelectionChange);
+            canvas.on('selection:updated', onSelectionChange);
+            canvas.on('selection:cleared', () => {
+                document.getElementById('selected-count').innerText = '0 elementi selezionati';
+                clearPropertyPanel();
+                document.getElementById('shape-color-panel').classList.remove('visible');
+            });
+            canvas.on('object:modified', saveState);
+            canvas.on('selection:created', updatePropertiesFromSelection);
+            canvas.on('selection:updated', updatePropertiesFromSelection);
+
+            document.addEventListener('keydown', handleKeyShortcuts);
+        }
+
+        function onSelectionChange() {
+            updateSelectionInfo();
+            const activeObjects = canvas.getActiveObjects();
+            const hasShape = activeObjects.some(o => o.type === 'rect' || o.type === 'circle' || o.type === 'ellipse' || o.type === 'triangle');
+            const panel = document.getElementById('shape-color-panel');
+            if (hasShape) {
+                panel.classList.add('visible');
+                // Sync stroke width slider
+                const firstShape = activeObjects.find(o => ['rect','circle','ellipse','triangle'].includes(o.type));
+                if (firstShape) {
+                    const sw = firstShape.strokeWidth || 0;
+                    document.getElementById('stroke-width').value = sw;
+                    document.getElementById('stroke-width-val').textContent = sw;
+                }
+            } else {
+                panel.classList.remove('visible');
+            }
+        }
+
+        function handleKeyShortcuts(e) {
+            if (e.key === 'Delete') { deleteSelected(); e.preventDefault(); }
+            if (e.ctrlKey && e.key === 'z') { undo(); e.preventDefault(); }
+            if (e.ctrlKey && e.key === 'y') { redo(); e.preventDefault(); }
+            if (e.ctrlKey && e.key === 'd') { deselectAll(); e.preventDefault(); }
+        }
+
+        function updateSelectionInfo() {
+            const n = canvas.getActiveObjects().length;
+            document.getElementById('selected-count').innerText = `${n} elemento${n !== 1 ? 'i' : ''} selezionato${n !== 1 ? '' : ''}`;
+        }
+
+        function updatePropertiesFromSelection() {
+            const activeObjects = canvas.getActiveObjects();
+            if (activeObjects.length === 1) {
+                const obj = activeObjects[0];
+                document.getElementById('pos-x').value = Math.round(obj.left || 0);
+                document.getElementById('pos-y').value = Math.round(obj.top || 0);
+                document.getElementById('width').value = Math.round((obj.width * obj.scaleX) || 100);
+                document.getElementById('height').value = Math.round((obj.height * obj.scaleY) || 100);
+                document.getElementById('rotation').value = obj.angle || 0;
+                document.getElementById('opacity').value = obj.opacity || 1;
+            }
+        }
+
+        function clearPropertyPanel() {
+            document.getElementById('pos-x').value = 0;
+            document.getElementById('pos-y').value = 0;
+            document.getElementById('width').value = 100;
+            document.getElementById('height').value = 100;
+            document.getElementById('rotation').value = 0;
+            document.getElementById('opacity').value = 1;
+        }
+
+        function deselectAll() {
+            canvas.discardActiveObject();
+            canvas.renderAll();
+            updateSelectionInfo();
+            clearPropertyPanel();
+        }
+
+        function deleteSelected() {
+            const activeObjects = canvas.getActiveObjects();
+            if (activeObjects.length > 0) {
+                activeObjects.forEach(obj => canvas.remove(obj));
+                canvas.discardActiveObject();
+                canvas.renderAll();
+                saveState();
+                updateSelectionInfo();
+                clearPropertyPanel();
+            }
+        }
+
+        function saveState() {
+            const state = JSON.stringify(canvas.toJSON());
+            history = history.slice(0, historyIndex + 1);
+            history.push(state);
+            historyIndex++;
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                canvas.loadFromJSON(history[historyIndex], () => { canvas.renderAll(); updateSelectionInfo(); });
+            }
+        }
+
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                canvas.loadFromJSON(history[historyIndex], () => { canvas.renderAll(); updateSelectionInfo(); });
+            }
+        }
+
+        function updateProperty(prop, value) {
+            const activeObjects = canvas.getActiveObjects();
+            activeObjects.forEach(obj => {
+                if (prop === 'width') obj.scaleX = value / obj.width;
+                else if (prop === 'height') obj.scaleY = value / obj.height;
+                else obj[prop] = value;
+            });
+            canvas.renderAll();
+            saveState();
+        }
+
+        // ─── Shape fill / stroke ─────────────────────────────────────────────────
+        function setShapeFill(color) {
+            const activeObjects = canvas.getActiveObjects();
+            activeObjects.forEach(obj => {
+                if (['rect','circle','ellipse','triangle'].includes(obj.type)) {
+                    obj.set('fill', color);
+                }
+            });
+            canvas.renderAll();
+            saveState();
+        }
+
+        function setShapeStroke(color, width) {
+            const activeObjects = canvas.getActiveObjects();
+            activeObjects.forEach(obj => {
+                if (['rect','circle','ellipse','triangle'].includes(obj.type)) {
+                    obj.set('stroke', color);
+                    if (width !== undefined) obj.set('strokeWidth', width);
+                }
+            });
+            canvas.renderAll();
+            saveState();
+        }
+
+        function setShapeStrokeWidth(width) {
+            const activeObjects = canvas.getActiveObjects();
+            activeObjects.forEach(obj => {
+                if (['rect','circle','ellipse','triangle'].includes(obj.type)) {
+                    obj.set('strokeWidth', width);
+                    if (width > 0 && (!obj.stroke || obj.stroke === 'transparent')) {
+                        obj.set('stroke', '#333333');
+                    }
+                }
+            });
+            canvas.renderAll();
+            saveState();
+        }
+
+        // ─── Risoluzione ─────────────────────────────────────────────────────────
+        function setResolution(width, height) {
+            currentWidth = width;
+            currentHeight = height;
+            canvas.setWidth(width);
+            canvas.setHeight(height);
+            canvas.renderAll();
+            saveState();
+            document.getElementById('custom-width').value = width;
+            document.getElementById('custom-height').value = height;
+        }
+
+        function setCustomResolution() {
+            const w = parseInt(document.getElementById('custom-width').value);
+            const h = parseInt(document.getElementById('custom-height').value);
+            if (w > 0 && h > 0) setResolution(w, h);
+        }
+
+        // ─── Sfondo ──────────────────────────────────────────────────────────────
+        function setBackgroundColor(color) {
+            canvas.setBackgroundColor(color, () => canvas.renderAll());
+            saveState();
+        }
+
+        function setBackgroundGradientFromStops(stops) {
+            const gradient = new fabric.Gradient({
+                type: 'linear',
+                coords: { x1: 0, y1: 0, x2: currentWidth, y2: currentHeight },
+                colorStops: stops
+            });
+            canvas.setBackgroundColor(gradient, () => canvas.renderAll());
+            saveState();
+        }
+
+        // ─── Immagine ────────────────────────────────────────────────────────────
+        function loadImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    fabric.Image.fromURL(e.target.result, function(img) {
+                        const maxDimension = Math.min(currentWidth, currentHeight) * 0.8;
+                        const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
+                        img.scale(scale);
+                        img.set({ left: (currentWidth - img.width * scale) / 2, top: (currentHeight - img.height * scale) / 2 });
+                        canvas.add(img);
+                        canvas.setActiveObject(img);
+                        canvas.renderAll();
+                        saveState();
+                    });
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // ─── Testo ───────────────────────────────────────────────────────────────
+        function addText() {
+            const text = new fabric.IText('Doppio clic per modificare', {
+                left: currentWidth / 2 - 150,
+                top: currentHeight / 2 - 20,
+                fontFamily: 'Arial',
+                fontSize: 32,
+                fill: '#333333',
+                fontWeight: 'normal',
+                originX: 'left',
+                originY: 'top'
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            canvas.renderAll();
+            saveState();
+        }
+
+        // ─── Forme ───────────────────────────────────────────────────────────────
+        function addShape(type) {
+            let shape;
+            if (type === 'rect') {
+                shape = new fabric.Rect({
+                    left: currentWidth / 2 - 50,
+                    top: currentHeight / 2 - 50,
+                    width: 100, height: 100,
+                    fill: '#667eea', stroke: '#333', strokeWidth: 2,
+                    originX: 'left', originY: 'top'
+                });
+            } else if (type === 'circle') {
+                shape = new fabric.Circle({
+                    left: currentWidth / 2 - 50,
+                    top: currentHeight / 2 - 50,
+                    radius: 50,
+                    fill: '#ff4757', stroke: '#333', strokeWidth: 2,
+                    originX: 'left', originY: 'top'
+                });
+            }
+            canvas.add(shape);
+            canvas.setActiveObject(shape);
+            canvas.renderAll();
+            saveState();
+        }
+
+        // ─── Filtri ──────────────────────────────────────────────────────────────
+        function applyFilter(filter) {
+            const obj = canvas.getActiveObject();
+            if (obj && obj.type === 'image') {
+                switch(filter) {
+                    case 'grayscale': obj.filters.push(new fabric.Image.filters.Grayscale()); break;
+                    case 'sepia': obj.filters.push(new fabric.Image.filters.Sepia()); break;
+                    case 'brightness': obj.filters.push(new fabric.Image.filters.Brightness({ brightness: 0.2 })); break;
+                    case 'contrast': obj.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.2 })); break;
+                }
+                obj.applyFilters();
+                canvas.renderAll();
+                saveState();
+            }
+        }
+
+        function removeFilters() {
+            const obj = canvas.getActiveObject();
+            if (obj && obj.type === 'image') {
+                obj.filters = [];
+                obj.applyFilters();
+                canvas.renderAll();
+                saveState();
+            }
+        }
+
+        // ─── Stile testo ─────────────────────────────────────────────────────────
+        function setTextBold() {
+            const obj = canvas.getActiveObject();
+            if (obj && obj.type === 'i-text') {
+                obj.set('fontWeight', obj.fontWeight === 'bold' ? 'normal' : 'bold');
+                canvas.renderAll(); saveState();
+            }
+        }
+
+        function setTextItalic() {
+            const obj = canvas.getActiveObject();
+            if (obj && obj.type === 'i-text') {
+                obj.set('fontStyle', obj.fontStyle === 'italic' ? 'normal' : 'italic');
+                canvas.renderAll(); saveState();
+            }
+        }
+
+        function changeFont(font) {
+            const obj = canvas.getActiveObject();
+            if (obj && obj.type === 'i-text') {
+                obj.set('fontFamily', font);
+                canvas.renderAll(); saveState();
+            }
+        }
+
+        // ─── Esportazione ────────────────────────────────────────────────────────
+        function saveAsPNG() {
+            const dataURL = canvas.toDataURL({ format: 'png', multiplier: 2 });
+            saveAs(dataURL, 'design.png');
+        }
+
+        function saveAsJPG() {
+            const dataURL = canvas.toDataURL({ format: 'jpg', quality: 0.95, multiplier: 2 });
+            saveAs(dataURL, 'design.jpg');
+        }
+
+        function exportAsJSON() {
+            const data = JSON.stringify({ version: '1.0', width: currentWidth, height: currentHeight, canvas: canvas.toJSON() });
+            const blob = new Blob([data], { type: 'application/json' });
+            saveAs(blob, 'progetto.json');
+        }
+
+        function importJSON() { document.getElementById('json-input').click(); }
+
+        function importJSONFile(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = JSON.parse(e.target.result);
+                    if (data.width && data.height) setResolution(data.width, data.height);
+                    canvas.loadFromJSON(data.canvas, () => { canvas.renderAll(); saveState(); });
+                };
+                reader.readAsText(input.files[0]);
+            }
+        }
+
+        // ─── Boot ─────────────────────────────────────────────────────────────────
+        window.onload = () => {
+            buildBgColorGrid();
+            buildBgGradientGrid();
+            buildShapeColorGrids();
+            initCanvas();
+            document.getElementById('custom-width').value = currentWidth;
+            document.getElementById('custom-height').value = currentHeight;
+        };
+    </script>
+
+<footer style="text-align:center; padding:20px; opacity:.8;">
+    Editor grafico online di <a href="https://www.gabrieleviola.it">Gabriele Viola</a> &copy; 2025 -
+    immagini e dati vengono elaborati localmente nel browser e non vengono salvati o trasmessi da questo tool.
+</footer>
+</body>
+</html>
