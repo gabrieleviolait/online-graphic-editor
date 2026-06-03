@@ -848,8 +848,15 @@
     </script>
 
 <footer style="text-align:center; padding:20px; opacity:.8;">
-    Editor grafico online di <a href="https://www.gabrieleviola.it">Gabriele Viola</a> &copy; 2025 -
+    Editor grafico online di <a href="https://www.gabrieleviola.it">Gabriele Viola</a> &copy; <span class="current-year"></span> -
     immagini e dati vengono elaborati localmente nel browser e non vengono salvati o trasmessi da questo tool.
 </footer>
+
+<script>
+    document.querySelectorAll(".current-year").forEach(function(el) {
+        el.textContent = new Date().getFullYear();
+    });
+</script>
+
 </body>
 </html>
