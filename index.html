@@ -244,6 +244,36 @@
   }
 </style>
 
+
+<style id="footer-visibility-fix">
+  html, body {
+    min-height: 100%;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  footer {
+    display: block !important;
+    position: relative !important;
+    z-index: 9999 !important;
+    pointer-events: auto !important;
+    margin-top: 32px !important;
+    padding: 28px 20px !important;
+    text-align: center !important;
+    opacity: 1 !important;
+    clear: both !important;
+  }
+
+  footer a {
+    position: relative !important;
+    z-index: 10000 !important;
+    pointer-events: auto !important;
+    text-decoration: underline !important;
+  }
+</style>
+
 </head>
 <body>
     <div class="loading" id="loading">
@@ -863,7 +893,7 @@
     </script>
 
 <footer style="text-align:center; padding:24px 20px; opacity:1; display:block; position:relative; z-index:50;">
-    Editor grafico online di <a href="https://www.gabrieleviola.it">Gabriele Viola</a> &copy; <span class="current-year"></span> -
+    Editor grafico online di <a href="https://www.gabrieleviola.it" target="_blank" rel="noopener">Gabriele Viola</a> &copy; <span class="current-year"></span> -
     immagini e dati vengono elaborati localmente nel browser e non vengono salvati o trasmessi da questo tool.
 
     <p><a href="https://www.gabrieleviola.it/informativa-privacy-progetti-e-siti-statici/" target="_blank" rel="noopener">Privacy policy</a></p>
